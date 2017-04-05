@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <link rel="stylesheet" type="text/css" href="stylesheet.css" />
+    <title>Chatroom!</title>
+    <script src="http://code.jquery.com/jquery-latest.min.js"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        html,body{
+    margin: 0;
+    background-color: #efefef;
+    font-family: sans-serif;
+}
+background {
+    font-family: sans-serif;
+}
+#room_input{
+    font-size: small;
+    color: #808080;
+}
+.message_feed{
+    width: 500px;
+    min-width: 390px;
+    background: #fff;
+    padding: 0px;
+    margin: 10px auto;
+}
+.well{
+    background: #fff;
+    padding: 5px;
+    margin: 10px auto;
+    text-align: center;
+}
+.row{
+    align-self: center;
+}
+.btn .btn-primary{
+    align-self: center;
+}
+p{
+    text-align: center;
+     font-size: small;
+}
+.form-control{
+    text-align: center;
+     font-size: small;
+}
+.form-group{
+    text-align: center;
+     font-size: small;
+}
+.container{
+    text-align: center;
+     font-size: small;
+}
+col-md-12{
+    text-align: center;
+     font-size: small;
+}
+col-md-4{
+    text-align: center;
+    font-size: small;
+}
+.error{
+    color: red;
+}
+.exit{
+    color: grey;
+    background: #fff;
+    padding: 5px;
+    margin: 10px auto;
+    text-align: center;
+}
+.kicking{
+    color: red;
+    background: #fff;
+    padding: 5px;
+    margin: 10px auto;
+    text-align: center;
+}
+.banning{
+    color: red;
+    background: #fff;
+    padding: 5px;
+    margin: 10px auto;
+    text-align: center;
+}
+.new{
+    color: green;
+    background: #fff;
+    padding: 5px;
+    margin: 10px auto;
+    text-align: center;
+}
+.private_message{
+    color: blue;
+    font-style: italic;
+}
+#rooms{
+    cursor: pointer;
+}
+
+.kick{
+    font-size: xx-small;
+    cursor: pointer;
+}
+.ban{
+    font-size: xx-small;
+    cursor: pointer;
+}
+
+    </style>
+    <style>
+        body{
+            margin-top: 10px;
+        }
+        #message_block{
+            display: none;
+        }
+        #room_block{
+            display: none;
+        }
+    </style>
+</head>   
+    
+<body>
+    <div class="container">
+        <div id="user_block" class="row">
+            <div class="col-md-12">
+                <form method="post" id="user_input">
+                    <div class="form-group"></div>
+                    <label>Enter Name</label>
+                    <input class="form-control" id="name"/>
+                    <br/>
+                    <input type="submit" class = "btn btn-primary" value="Login"/>
+                    <h5>Note: your username may not contain any spaces</h5>
+                    
+                </form>
+            </div>
+        </div>
+        
+
+        <div id="room_block" class="row">
+            <div class="col-md-4">
+                <div class="well">
+                    <h3>Rooms</h3>
+                    
+                        <h4 id="initial_room"><b>Welcome! You are in the lobby</b></h4>
+                    
+                    <p id = "your_room">
+                        
+                    </p>
+                    <p id="rooms"></p>
+                </div>
+            </div>
+            <div class="col-md-12">
+                <form method="post" id="room_input">
+                    <div class="form-group"></div>
+                    <label>Enter New Room Name</label>
+                    <input class="form-control" id="room_list" name="name"/>
+                    <br/>
+                    <label>Create password (optional)</label>
+                    <input class="form-control" type="password" name="password" id="private_room_password"/>
+                    <br/>
+                    <input type="submit" class = "btn btn-primary" value="Create Room"/>
+                </form>
+            </div>
+        </div>
+        
+
+        
+        <div id="message_block" class="row">
+            <div class="col-md-4">
+                <div class="well">
+                    <h3>Users in this room:</h3>
+                    <p id="users"></p>
+                </div>
+            </div>
+            <div class="col-md-8">
+                <div class="chat" id="message_feed"></div>
+                <form method="post" id="message_input">
+                    <div class="form-group"></div>
+                    <label>Enter Message</label>
+                    <textarea class="form-control" id="message"></textarea>
+                    <br/>
+                    <input type="submit" class = "btn btn-primary" value="Send Chat"/>
+                    <h5>To private message: Type pm (user) (your_message)</h5>
+                    <h5>Example: pm mike hello!</h5>
+                </form>
+            </div>
+            
+        </div>
+    </div>
+    <script>
+        var socket = io.connect();
+        
+        var change_room = function (room){
+            socket.emit('change_room', room);
+            console.log('emit room change');
+ 
+        };
+        
+        socket.on('status',function(data){
+           if(data.status){
+            
+            $('#message_feed').empty();
+            $('#initial_room').empty();
+            
+            var roomNode = jQuery('<h4/>',  {
+                text: 'You are now in ' + data.room
+            });
+            $('#your_room').empty();
+            roomNode.appendTo($('#your_room'));
+            
+            console.log(data.owner);
+            console.log(name);
+                if (data.owner === name){
+                    console.log("i own");
+                    addKickBan();
+                    
+                }
+                else {
+                    $(".kick").remove();
+                    $(".ban").remove();
+                }
+            }
+            else{
+              
+              //nothing
+            }
+        });
+        
+        socket.on("request_leave", function(){
+            change_room("lobby");
+        })
+        
+        function addKickBan(){
+                    $(".kick").remove();
+                    $(".ban").remove();
+            var minions = document.getElementsByClassName("usersInRoom");
+                    console.log(minions);
+                    for (var j = 0; j < minions.length; j++){
+                        console.log("name" + name);
+                        if ($(minions[j]).attr('id') !== name){
+                            var kid = 'k' + $(minions[j]).attr('id');
+                            console.log($(minions[j]).val());
+                            var kickNode = jQuery('<span/>', {
+                            class: 'kick',
+                            id: kid,
+                             text: " kick"
+                            });
+                                
+                        (function() {
+                              var data = kid;
+                                 kickNode.click(function(){
+                                    socket.emit("kick", data);
+                                });
+                        })();
+                            
+                            kickNode.appendTo($(minions[j]));
+                            
+                             var bid = 'b' + $(minions[j]).attr('id');
+                            var banNode = jQuery('<span/>', {
+                            class: 'ban',
+                            id: bid,
+                             text: " ban"
+                            });                 
+                             (function() {
+                              var data = bid;
+                                 banNode.click(function(){
+                                    socket.emit("ban", data);
+                                });
+                             })();
+                            banNode.appendTo($(minions[j]));
+                            
+                        }
+                    }
+        }
+
+        var name;
+        $(function(){
+            
+           //messages
+           var $message_input = $('#message_input');
+           var $message = $('#message');
+           var $message_feed = $('#message_feed');
+           var $message_block = $('#message_block');
+           //users
+           var $user_block = $('#user_block');
+           var $user_input = $('#user_input');
+           var $users = $('#users');
+           var $name = $('#name');
+           //rooms
+           var $room_block = $('#room_block');
+           var $room_input = $('#room_input');
+           var $rooms = $('#rooms');
+           var $room_list = $('#room_list');
+
+
+           
+           $message_input.submit(function(e){
+            e.preventDefault();
+            socket.emit('message_send',$message.val(), function(data){
+                  var messageNode = jQuery('<div/>', {
+                    class: 'well',
+                    text: data
+                    });
+                    messageNode.appendTo($message_feed);
+            });
+            $message.val('');
+           });
+           
+           
+           socket.on('user_enters',function(data){
+                 var newNode = jQuery('<div/>', {
+                    class: 'new',
+                    text: data.user + ' has joined ' + data.room
+                    });
+                    newNode.appendTo($message_feed);
+
+           });
+           
+           
+           socket.on('user_kicked',function(data){
+                 var newNode = jQuery('<div/>', {
+                    class: 'kicking',
+                    text: data.user + ' has been kicked from ' + data.room
+                    });
+                    newNode.appendTo($message_feed);     
+            
+           });
+           
+           
+           socket.on('user_banned',function(data){
+                 var newNode = jQuery('<div/>', {
+                    class: 'banning',
+                    text: data.user + ' has been banished FOREVER from ' + data.room
+                    });
+                    newNode.appendTo($message_feed);     
+            
+           });
+           
+           
+           
+           socket.on('user_leaves',function(data){
+                 var exitNode = jQuery('<div/>', {
+                    class: 'exit',
+                    text: data.user + ' has left ' + data.room
+                    });
+                    exitNode.appendTo($message_feed);
+           });
+
+           
+           socket.on('new_message',function(data){
+                 var newMesNode = jQuery('<div/>', {
+                    class: 'well',
+                    text: data.user+ ': ' + data.msg
+                    });
+                    newMesNode.appendTo($message_feed);
+           });
+           
+           $user_input.submit(function(e){
+            e.preventDefault();
+            name = $name.val();
+            socket.emit('new_user',$name.val(), function(data){
+                if(data){
+                    
+                    $user_block.hide();
+                    $message_block.show(); //once user inputs the other html blocks should appear
+                    $room_block.show();
+                }
+            });
+            $name.val('');
+           });
+           var currentUsersInRoom;
+           socket.on('obtain_users', function(data){
+            console.log("updating");
+                currentUsersInRoom = data.users;
+                updateUserList(data.users);
+                if (data.owner === name){
+                    console.log("i own");
+                    addKickBan();
+                    
+                }
+                    
+                
+            });
+            function updateUserList(data){
+                $users.empty();
+                for(i=0;i<data.length;i++){    
+                    var userNameNode = jQuery('<li/>', {
+                    class: 'list-group-item usersInRoom',
+                    id: data[i],
+                    text: data[i]
+                    });
+                    userNameNode.appendTo($users);
+                }
+            }
+           
+           socket.on('prompt_password', function(data){
+            var popup = window.prompt("Enter Password:", "");
+            socket.emit('attempt_password',popup);
+            
+           });
+           
+           $room_input.submit(function(e){
+            e.preventDefault();
+            var data = {name: $room_list.val(), password: $('#private_room_password').val()};
+            socket.emit('new_room',data);
+            $room_list.val('');
+           });
+           
+           
+           socket.on('obtain_rooms', function(data){
+                $rooms.empty();
+                for(i=0;i<data.length;i++){
+                    var roomNode = jQuery('<div/>',  {
+                    text: data[i].name
+                    });
+                    (function() {
+                        var room = data[i].name;
+                        roomNode.click(function(){
+                        change_room(room);
+                        console.log(room);
+                    });
+                    })();
+                    roomNode.appendTo($rooms);      
+                }
+            });
+
+           socket.on('private_message',function(data){
+                 var pmNode = jQuery('<div/>',  {
+                    class: 'well private_message',
+                    text: '[pm to ' + data.seconduser + ']' + data.user + ': ' + data.msg //directed private message
+                    });
+                    pmNode.appendTo($message_feed);
+           });
+
+           
+           
+        });
+
+    </script>
+    
+</body>
+
+</html>
